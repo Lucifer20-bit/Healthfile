@@ -1,0 +1,189 @@
+// Prisma Schema for Healthfile Electronic Health Records System
+// Configured for local SQLite by default (zero configuration, no Docker needed)
+// Can be switched to PostgreSQL anytime by updating provider and DATABASE_URL in .env
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  passwordHash String
+  name         String
+  role         String          @default("PATIENT") // PATIENT, DOCTOR, ADMIN
+  phone        String?
+  avatar       String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  doctorProfile  DoctorProfile?
+  patientProfile PatientProfile?
+
+  // Relations as Doctor
+  doctorRecords      MedicalRecord[] @relation("DoctorRecords")
+  doctorAppointments Appointment[]   @relation("DoctorAppointments")
+  doctorPrescriptions Prescription[] @relation("DoctorPrescriptions")
+
+  // Relations as Patient
+  patientRecords      MedicalRecord[] @relation("PatientRecords")
+  patientAppointments Appointment[]   @relation("PatientAppointments")
+  patientPrescriptions Prescription[] @relation("PatientPrescriptions")
+  medicationLogs      MedicationLog[]
+
+  // Audit Logs
+  auditLogs           AuditLog[]
+}
+
+model DoctorProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialization  String
+  licenseNumber   String
+  bio             String?
+  consultationFee Float    @default(50.0)
+  availableDays   String   @default("Mon,Tue,Wed,Thu,Fri")
+  hospital        String   @default("City Central Medical Center")
+  experienceYears Int      @default(5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PatientProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth       DateTime?
+  gender            String?
+  bloodGroup        String?
+  allergies         String?   // comma separated or JSON string
+  chronicConditions String?   // comma separated or JSON string
+  emergencyContact  String?
+  address           String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model MedicalRecord {
+  id          String             @id @default(cuid())
+  title       String
+  recordType  String             // LAB_REPORT, IMAGING, PRESCRIPTION, DISCHARGE_SUMMARY, GENERAL
+  description String?
+  date        DateTime           @default(now())
+  vitalsJson  String?            // JSON string: { bp: "120/80", hr: 72, glucose: 95, weight: 70, temp: 98.6, spo2: 99 }
+  
+  patientId   String
+  patient     User               @relation("PatientRecords", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId    String?
+  doctor      User?              @relation("DoctorRecords", fields: [doctorId], references: [id])
+  
+  attachments RecordAttachment[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model RecordAttachment {
+  id           String        @id @default(cuid())
+  recordId     String
+  record       MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  fileName     String
+  originalName String
+  filePath     String
+  mimeType     String
+  fileSize     Int
+  uploadedAt   DateTime      @default(now())
+}
+
+model Appointment {
+  id               String        @id @default(cuid())
+  patientId        String
+  patient          User          @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId         String
+  doctor           User          @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  dateTime         DateTime
+  durationMinutes  Int           @default(30)
+  status           String        @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  reason           String
+  diagnosis        String?
+  notes            String?
+  consultationType String        @default("IN_PERSON") // IN_PERSON, VIDEO_CALL
+  
+  prescription     Prescription?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Prescription {
+  id            String             @id @default(cuid())
+  patientId     String
+  patient       User               @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId      String
+  doctor        User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  appointmentId String?            @unique
+  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
+  
+  diagnosis     String?
+  status        String             @default("ACTIVE") // ACTIVE, COMPLETED, DISCONTINUED
+  notes         String?
+  issuedDate    DateTime           @default(now())
+  validUntil    DateTime?
+  
+  items         PrescriptionItem[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model PrescriptionItem {
+  id             String          @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription    @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  
+  medicationName String
+  dosage         String          // e.g., "500mg", "10ml"
+  frequency      String          // e.g., "Twice daily (Morning, Evening)"
+  timing         String          @default("AFTER_MEAL") // BEFORE_MEAL, AFTER_MEAL, WITH_FOOD, ANYTIME
+  durationDays   Int             @default(7)
+  instructions   String?         // e.g. "Take with a full glass of water"
+  
+  logs           MedicationLog[]
+  createdAt      DateTime        @default(now())
+}
+
+model MedicationLog {
+  id                 String           @id @default(cuid())
+  prescriptionItemId String
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  
+  patientId          String
+  patient            User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  scheduledDate      String           // YYYY-MM-DD
+  timeSlot           String           @default("MORNING") // MORNING, AFTERNOON, EVENING, NIGHT
+  takenAt            DateTime?
+  status             String           @default("PENDING") // PENDING, TAKEN, SKIPPED, MISSED
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // e.g., "LOGIN", "VIEW_RECORD", "UPLOAD_RECORD", "BOOK_APPOINTMENT", "ISSUE_PRESCRIPTION"
+  entity    String   // e.g., "MedicalRecord", "Appointment", "Prescription", "User"
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}

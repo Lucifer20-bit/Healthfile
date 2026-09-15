@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+  <rect width="100%" height="100%" fill="#090d16"/>
+  <!-- Grid lines -->
+  <defs>
+    <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(13, 148, 136, 0.15)" stroke-width="0.5"/>
+    </pattern>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#smallGrid)"/>
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(13, 148, 136, 0.3)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  <!-- ECG Trace line -->
+  <path d="M0,200 L100,200 L120,200 L130,190 L140,200 L160,200 L170,140 L180,270 L195,120 L210,215 L220,195 L230,200 L280,200 L320,170 L340,200 L400,200 L420,200 L430,190 L440,200 L460,200 L470,140 L480,270 L495,120 L510,215 L520,195 L530,200 L580,200 L620,170 L640,200 L700,200 L720,200 L730,190 L740,200 L760,200 L770,140 L780,270 L795,120 L800,200" fill="none" stroke="#14b8a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Header overlay -->
+  <text x="30" y="40" fill="#2dd4bf" font-family="system-ui, sans-serif" font-size="18" font-weight="bold">HEALTHFILE 12-LEAD ECG MONITORING TRACE</text>
+  <text x="30" y="65" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13">Patient: Alex Morgan | HR: 68 BPM | Normal Sinus Rhythm | Lead II</text>
+</svg>
